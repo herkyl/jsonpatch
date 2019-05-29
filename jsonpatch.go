@@ -69,62 +69,6 @@ func CreatePatch(a, b []byte) ([]JsonPatchOperation, error) {
 	return diff(aI, bI, "", []JsonPatchOperation{})
 }
 
-// Returns true if the values matches (must be json types)
-// The types of the values must match, otherwise it will always return false
-// If two map[string]interface{} are given, all elements must match.
-func matchesValue(av, bv interface{}) bool {
-	if reflect.TypeOf(av) != reflect.TypeOf(bv) {
-		return false
-	}
-	switch at := av.(type) {
-	case string:
-		bt := bv.(string)
-		if bt == at {
-			return true
-		}
-	case float64:
-		bt := bv.(float64)
-		if bt == at {
-			return true
-		}
-	case bool:
-		bt := bv.(bool)
-		if bt == at {
-			return true
-		}
-	case map[string]interface{}:
-		bt := bv.(map[string]interface{})
-		for key := range at {
-			if !matchesValue(at[key], bt[key]) {
-				return false
-			}
-		}
-		for key := range bt {
-			if !matchesValue(at[key], bt[key]) {
-				return false
-			}
-		}
-		return true
-	case []interface{}:
-		bt := bv.([]interface{})
-		if len(bt) != len(at) {
-			return false
-		}
-		for key := range at {
-			if !matchesValue(at[key], bt[key]) {
-				return false
-			}
-		}
-		for key := range bt {
-			if !matchesValue(at[key], bt[key]) {
-				return false
-			}
-		}
-		return true
-	}
-	return false
-}
-
 // From http://tools.ietf.org/html/rfc6901#section-4 :
 //
 // Evaluation of each reference token begins by decoding any escaped
@@ -191,7 +135,7 @@ func handleValues(av, bv interface{}, p string, patch []JsonPatchOperation) ([]J
 			return nil, err
 		}
 	case string, float64, bool:
-		if !matchesValue(av, bv) {
+		if !reflect.DeepEqual(av, bv) {
 			patch = append(patch, NewPatch("replace", p, bv))
 		}
 	case []interface{}:
