@@ -68,7 +68,7 @@ func CreatePatch(a, b []byte) ([]JsonPatchOperation, error) {
 		return nil, errBadJSONDoc
 	}
 
-	return handleValues(aI, bI, "", []JsonPatchOperation{})
+	return diff(aI, bI, "", []JsonPatchOperation{})
 }
 
 // From http://tools.ietf.org/html/rfc6901#section-4 :
@@ -94,10 +94,16 @@ func makePath(path string, newPart interface{}) string {
 }
 
 // diff returns the (recursive) difference between a and b as an array of JsonPatchOperations.
-func diff(a, b map[string]interface{}, path string, patch []JsonPatchOperation) ([]JsonPatchOperation, error) {
-	for key, bv := range b {
+func diff(a, b interface{}, path string, patch []JsonPatchOperation) ([]JsonPatchOperation, error) {
+	if reflect.TypeOf(a) != reflect.TypeOf(b) {
+		patch = append(patch, NewPatch("replace", path, b))
+		return patch, nil
+	}
+	am := arrayOrMapToMap(a)
+	bm := arrayOrMapToMap(b)
+	for key, bv := range bm {
 		p := makePath(path, key)
-		av, ok := a[key]
+		av, ok := am[key]
 		// value was added
 		if !ok {
 			patch = append(patch, NewPatch("add", p, bv))
@@ -116,8 +122,8 @@ func diff(a, b map[string]interface{}, path string, patch []JsonPatchOperation) 
 		}
 	}
 	// Now add all deleted values as nil
-	for key := range a {
-		_, found := b[key]
+	for key := range am {
+		_, found := bm[key]
 		if !found {
 			p := makePath(path, key)
 
@@ -200,4 +206,22 @@ func compareArray(av, bv []interface{}, p string) []JsonPatchOperation {
 	}
 
 	return retval
+}
+
+func arrayOrMapToMap(i interface{}) map[interface{}]interface{} {
+	m := make(map[interface{}]interface{})
+	switch t := i.(type) {
+	case map[string]interface{}: // JSON object as Go map[string]interface{}
+		for k, v := range t {
+			m[k] = v
+		}
+		return m
+	case []interface{}: // JSON array as Go slice []interface{}
+		for i, v := range t {
+			m[i] = v
+		}
+		return m
+	default:
+		panic(fmt.Sprintf("Unknown type: %T ", t))
+	}
 }
