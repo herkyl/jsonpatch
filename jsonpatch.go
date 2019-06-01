@@ -93,18 +93,59 @@ func makePath(path string, newPart interface{}) string {
 	return path + "/" + key
 }
 
-// diff returns the (recursive) difference between a and b as an array of JsonPatchOperations.
-func diff(a, b interface{}, path string, patch []JsonPatchOperation) ([]JsonPatchOperation, error) {
+func diff(a, b interface{}, p string, patch []JsonPatchOperation) ([]JsonPatchOperation, error) {
+	// If values are not of the same type simply replace
 	if reflect.TypeOf(a) != reflect.TypeOf(b) {
-		patch = append(patch, NewPatch("replace", path, b))
+		patch = append(patch, NewPatch("replace", p, b))
 		return patch, nil
 	}
-	// Convert both JSON array and object types to maps so we can easily iterate
-	am := arrayOrMapToMap(a)
-	bm := arrayOrMapToMap(b)
-	for key, bv := range bm {
+
+	var err error
+	switch at := a.(type) {
+	case map[string]interface{}:
+		bt := b.(map[string]interface{})
+		patch, err = diffObjects(at, bt, p, patch)
+		if err != nil {
+			return nil, err
+		}
+	case string, float64, bool:
+		if !reflect.DeepEqual(a, b) {
+			patch = append(patch, NewPatch("replace", p, b))
+		}
+	case []interface{}:
+		bt, ok := b.([]interface{})
+		if !ok {
+			// array replaced by non-array
+			patch = append(patch, NewPatch("replace", p, b))
+		} else if len(at) != len(bt) {
+			// arrays are not the same length
+			patch = append(patch, compareArray(at, bt, p)...)
+		} else {
+			for i := range bt {
+				patch, err = diff(at[i], bt[i], makePath(p, i), patch)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+	case nil:
+		switch b.(type) {
+		case nil:
+			// Both nil, fine.
+		default:
+			patch = append(patch, NewPatch("add", p, b))
+		}
+	default:
+		panic(fmt.Sprintf("Unknown type:%T ", a))
+	}
+	return patch, nil
+}
+
+// diff returns the (recursive) difference between a and b as an array of JsonPatchOperations.
+func diffObjects(a, b map[string]interface{}, path string, patch []JsonPatchOperation) ([]JsonPatchOperation, error) {
+	for key, bv := range b {
 		p := makePath(path, key)
-		av, ok := am[key]
+		av, ok := a[key]
 		// Key doesn't exist in original document, value was added
 		if !ok {
 			patch = append(patch, NewPatch("add", p, bv))
@@ -117,60 +158,18 @@ func diff(a, b interface{}, path string, patch []JsonPatchOperation) ([]JsonPatc
 		}
 		// Types are the same, compare values
 		var err error
-		patch, err = compareValues(av, bv, p, patch)
+		patch, err = diff(av, bv, p, patch)
 		if err != nil {
 			return nil, err
 		}
 	}
 	// Now add all deleted values as nil
-	for key := range am {
-		_, ok := bm[key]
+	for key := range a {
+		_, ok := b[key]
 		if !ok {
 			p := makePath(path, key)
 			patch = append(patch, NewPatch("remove", p, nil))
 		}
-	}
-	return patch, nil
-}
-
-func compareValues(av, bv interface{}, p string, patch []JsonPatchOperation) ([]JsonPatchOperation, error) {
-	var err error
-	switch at := av.(type) {
-	case map[string]interface{}:
-		bt := bv.(map[string]interface{})
-		patch, err = diff(at, bt, p, patch)
-		if err != nil {
-			return nil, err
-		}
-	case string, float64, bool:
-		if !reflect.DeepEqual(av, bv) {
-			patch = append(patch, NewPatch("replace", p, bv))
-		}
-	case []interface{}:
-		bt, ok := bv.([]interface{})
-		if !ok {
-			// array replaced by non-array
-			patch = append(patch, NewPatch("replace", p, bv))
-		} else if len(at) != len(bt) {
-			// arrays are not the same length
-			patch = append(patch, compareArray(at, bt, p)...)
-		} else {
-			for i := range bt {
-				patch, err = compareValues(at[i], bt[i], makePath(p, i), patch)
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-	case nil:
-		switch bv.(type) {
-		case nil:
-			// Both nil, fine.
-		default:
-			patch = append(patch, NewPatch("add", p, bv))
-		}
-	default:
-		panic(fmt.Sprintf("Unknown type:%T ", av))
 	}
 	return patch, nil
 }
@@ -210,23 +209,5 @@ func processArray(av, bv []interface{}, applyOp func(i int, value interface{})) 
 		if _, ok := foundIndexes[i]; !ok {
 			applyOp(i, v)
 		}
-	}
-}
-
-func arrayOrMapToMap(i interface{}) map[interface{}]interface{} {
-	m := make(map[interface{}]interface{})
-	switch t := i.(type) {
-	case map[string]interface{}: // JSON object as Go map[string]interface{}
-		for k, v := range t {
-			m[k] = v
-		}
-		return m
-	case []interface{}: // JSON array as Go slice []interface{}
-		for i, v := range t {
-			m[i] = v
-		}
-		return m
-	default:
-		panic(fmt.Sprintf("Unknown type: %T ", t))
 	}
 }
