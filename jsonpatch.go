@@ -119,7 +119,7 @@ func diff(a, b interface{}, p string, patch []JsonPatchOperation) ([]JsonPatchOp
 			patch = append(patch, NewPatch("replace", p, b))
 		} else if len(at) != len(bt) {
 			// arrays are not the same length
-			patch = append(patch, compareArray(at, bt, p)...)
+			patch = append(patch, diffArrays(at, bt, p)...)
 		} else {
 			for i := range bt {
 				patch, err = diff(at[i], bt[i], makePath(p, i), patch)
@@ -174,7 +174,7 @@ func diffObjects(a, b map[string]interface{}, path string, patch []JsonPatchOper
 	return patch, nil
 }
 
-func compareArray(av, bv []interface{}, p string) []JsonPatchOperation {
+func diffArrays(av, bv []interface{}, p string) []JsonPatchOperation {
 	retval := []JsonPatchOperation{}
 	// Find elements that need to be removed
 	processArray(av, bv, func(i int, value interface{}) {
