@@ -99,12 +99,13 @@ func diff(a, b interface{}, path string, patch []JsonPatchOperation) ([]JsonPatc
 		patch = append(patch, NewPatch("replace", path, b))
 		return patch, nil
 	}
+	// Convert both JSON array and object types to maps so we can easily iterate
 	am := arrayOrMapToMap(a)
 	bm := arrayOrMapToMap(b)
 	for key, bv := range bm {
 		p := makePath(path, key)
 		av, ok := am[key]
-		// value was added
+		// Key doesn't exist in original document, value was added
 		if !ok {
 			patch = append(patch, NewPatch("add", p, bv))
 			continue
@@ -116,24 +117,23 @@ func diff(a, b interface{}, path string, patch []JsonPatchOperation) ([]JsonPatc
 		}
 		// Types are the same, compare values
 		var err error
-		patch, err = handleValues(av, bv, p, patch)
+		patch, err = compareValues(av, bv, p, patch)
 		if err != nil {
 			return nil, err
 		}
 	}
 	// Now add all deleted values as nil
 	for key := range am {
-		_, found := bm[key]
-		if !found {
+		_, ok := bm[key]
+		if !ok {
 			p := makePath(path, key)
-
 			patch = append(patch, NewPatch("remove", p, nil))
 		}
 	}
 	return patch, nil
 }
 
-func handleValues(av, bv interface{}, p string, patch []JsonPatchOperation) ([]JsonPatchOperation, error) {
+func compareValues(av, bv interface{}, p string, patch []JsonPatchOperation) ([]JsonPatchOperation, error) {
 	var err error
 	switch at := av.(type) {
 	case map[string]interface{}:
@@ -154,10 +154,9 @@ func handleValues(av, bv interface{}, p string, patch []JsonPatchOperation) ([]J
 		} else if len(at) != len(bt) {
 			// arrays are not the same length
 			patch = append(patch, compareArray(at, bt, p)...)
-
 		} else {
 			for i := range bt {
-				patch, err = handleValues(at[i], bt[i], makePath(p, i), patch)
+				patch, err = compareValues(at[i], bt[i], makePath(p, i), patch)
 				if err != nil {
 					return nil, err
 				}
@@ -178,34 +177,40 @@ func handleValues(av, bv interface{}, p string, patch []JsonPatchOperation) ([]J
 
 func compareArray(av, bv []interface{}, p string) []JsonPatchOperation {
 	retval := []JsonPatchOperation{}
-	//	var err error
-	for i, v := range av {
-		found := false
-		for _, v2 := range bv {
-			if reflect.DeepEqual(v, v2) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			retval = append(retval, NewPatch("remove", makePath(p, i), nil))
-		}
-	}
-
-	for i, v := range bv {
-		found := false
-		for _, v2 := range av {
-			if reflect.DeepEqual(v, v2) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			retval = append(retval, NewPatch("add", makePath(p, i), v))
-		}
-	}
-
+	// Find elements that need to be removed
+	processArray(av, bv, func(i int, value interface{}) {
+		retval = append(retval, NewPatch("remove", makePath(p, i), nil))
+	})
+	// Find elements that need to be added.
+	// NOTE we pass in `bv` then `av` so that processArray can find the missing elements.
+	processArray(bv, av, func(i int, value interface{}) {
+		retval = append(retval, NewPatch("add", makePath(p, i), value))
+	})
 	return retval
+}
+
+// processArray processes `av` and `bv` calling `applyOp` whenever a value is absent.
+// It keeps track of which indexes have already had `applyOp` called for and automatically skips them so you can process duplicate objects correctly.
+func processArray(av, bv []interface{}, applyOp func(i int, value interface{})) {
+	foundIndexes := make(map[int]bool, len(av))
+	reverseFoundIndexes := make(map[int]bool, len(av))
+	for i, v := range av {
+		for i2, v2 := range bv {
+			if _, ok := reverseFoundIndexes[i2]; ok {
+				// We already found this index.
+				continue
+			}
+			if reflect.DeepEqual(v, v2) {
+				// Mark this index as found since it matches exactly.
+				foundIndexes[i] = true
+				reverseFoundIndexes[i2] = true
+				break
+			}
+		}
+		if _, ok := foundIndexes[i]; !ok {
+			applyOp(i, v)
+		}
+	}
 }
 
 func arrayOrMapToMap(i interface{}) map[interface{}]interface{} {
