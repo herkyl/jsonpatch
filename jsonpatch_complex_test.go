@@ -1,9 +1,11 @@
 package jsonpatch
 
 import (
-	"github.com/stretchr/testify/assert"
+	"encoding/json"
 	"sort"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var complexBase = `{"a":100, "b":[{"c1":"hello", "d1":"foo"},{"c2":"hello2", "d2":"foo2"} ], "e":{"f":200, "g":"h", "i":"j"}}`
@@ -71,6 +73,12 @@ func TestComplexOneAddToArray(t *testing.T) {
 
 func TestComplexVsEmpty(t *testing.T) {
 	patch, e := CreatePatch([]byte(complexBase), []byte(empty))
+	t.Log("base", complexBase)
+	t.Log("target", empty)
+	for i, p := range patch {
+		b, _ := json.Marshal(p)
+		t.Log("patch", i, string(b))
+	}
 	assert.NoError(t, e)
 	assert.Equal(t, 3, len(patch), "they should be equal")
 	sort.Sort(ByPath(patch))

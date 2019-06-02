@@ -101,13 +101,15 @@ func diff(a, b interface{}, p string, patch []JsonPatchOperation) ([]JsonPatchOp
 	}
 
 	var err error
+	var patch2 []JsonPatchOperation
 	switch at := a.(type) {
 	case map[string]interface{}:
 		bt := b.(map[string]interface{})
-		patch, err = diffObjects(at, bt, p, patch)
+		patch2, err = diffObjects(at, bt, p)
 		if err != nil {
 			return nil, err
 		}
+		patch = append(patch, patch2...)
 	case string, float64, bool:
 		if !reflect.DeepEqual(a, b) {
 			patch = append(patch, NewPatch("replace", p, b))
@@ -119,10 +121,11 @@ func diff(a, b interface{}, p string, patch []JsonPatchOperation) ([]JsonPatchOp
 			patch = append(patch, NewPatch("replace", p, b))
 		} else if len(at) != len(bt) {
 			// arrays are not the same length
-			patch, err = diffArrays(at, bt, p, patch)
+			patch2, err = diffArrays(at, bt, p)
 			if err != nil {
 				return nil, err
 			}
+			patch = append(patch, patch2...)
 		} else {
 			for i := range bt {
 				patch, err = diff(at[i], bt[i], makePath(p, i), patch)
@@ -145,7 +148,9 @@ func diff(a, b interface{}, p string, patch []JsonPatchOperation) ([]JsonPatchOp
 }
 
 // diff returns the (recursive) difference between a and b as an array of JsonPatchOperations.
-func diffObjects(a, b map[string]interface{}, path string, patch []JsonPatchOperation) ([]JsonPatchOperation, error) {
+func diffObjects(a, b map[string]interface{}, path string) ([]JsonPatchOperation, error) {
+	fullReplace := []JsonPatchOperation{NewPatch("replace", path, b)}
+	patch := []JsonPatchOperation{}
 	for key, bv := range b {
 		p := makePath(path, key)
 		av, ok := a[key]
@@ -174,10 +179,12 @@ func diffObjects(a, b map[string]interface{}, path string, patch []JsonPatchOper
 			patch = append(patch, NewPatch("remove", p, nil))
 		}
 	}
-	return patch, nil
+	return getSmallestPatch(fullReplace, patch), nil
 }
 
-func diffArrays(a, b []interface{}, p string, patch []JsonPatchOperation) ([]JsonPatchOperation, error) {
+func diffArrays(a, b []interface{}, p string) ([]JsonPatchOperation, error) {
+	fullReplace := []JsonPatchOperation{NewPatch("replace", p, b)}
+	patch := []JsonPatchOperation{}
 	max := len(a)
 	if len(b) > max {
 		max = len(b)
@@ -198,7 +205,7 @@ func diffArrays(a, b []interface{}, p string, patch []JsonPatchOperation) ([]Jso
 			return nil, err
 		}
 	}
-	return patch, nil
+	return getSmallestPatch(fullReplace, patch), nil
 }
 
 func getSmallestPatch(patches ...[]JsonPatchOperation) []JsonPatchOperation {
