@@ -2,7 +2,6 @@ package jsonpatch
 
 import (
 	"encoding/json"
-	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -79,18 +78,25 @@ func TestComplexVsEmpty(t *testing.T) {
 		b, _ := json.Marshal(p)
 		t.Log("patch", i, string(b))
 	}
+
 	assert.NoError(t, e)
-	assert.Equal(t, 3, len(patch), "they should be equal")
-	sort.Sort(ByPath(patch))
+	assert.Equal(t, 1, len(patch), "they should be equal")
 	change := patch[0]
-	assert.Equal(t, "remove", change.Operation, "they should be equal")
-	assert.Equal(t, "/a", change.Path, "they should be equal")
+	assert.Equal(t, "replace", change.Operation, "they should be equal")
+	assert.Equal(t, "", change.Path, "they should be equal")
 
-	change = patch[1]
-	assert.Equal(t, "remove", change.Operation, "they should be equal")
-	assert.Equal(t, "/b", change.Path, "they should be equal")
+	// assert.NoError(t, e)
+	// assert.Equal(t, 3, len(patch), "they should be equal")
+	// sort.Sort(ByPath(patch))
+	// change := patch[0]
+	// assert.Equal(t, "remove", change.Operation, "they should be equal")
+	// assert.Equal(t, "/a", change.Path, "they should be equal")
 
-	change = patch[2]
-	assert.Equal(t, "remove", change.Operation, "they should be equal")
-	assert.Equal(t, "/e", change.Path, "they should be equal")
+	// change = patch[1]
+	// assert.Equal(t, "remove", change.Operation, "they should be equal")
+	// assert.Equal(t, "/b", change.Path, "they should be equal")
+
+	// change = patch[2]
+	// assert.Equal(t, "remove", change.Operation, "they should be equal")
+	// assert.Equal(t, "/e", change.Path, "they should be equal")
 }

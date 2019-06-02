@@ -119,20 +119,13 @@ func diff(a, b interface{}, p string, patch []JsonPatchOperation) ([]JsonPatchOp
 		if !ok {
 			// array replaced by non-array
 			patch = append(patch, NewPatch("replace", p, b))
-		} else if len(at) != len(bt) {
+		} else {
 			// arrays are not the same length
 			patch2, err = diffArrays(at, bt, p)
 			if err != nil {
 				return nil, err
 			}
 			patch = append(patch, patch2...)
-		} else {
-			for i := range bt {
-				patch, err = diff(at[i], bt[i], makePath(p, i), patch)
-				if err != nil {
-					return nil, err
-				}
-			}
 		}
 	case nil:
 		switch b.(type) {
