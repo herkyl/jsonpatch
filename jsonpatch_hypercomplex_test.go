@@ -1,9 +1,10 @@
 package jsonpatch
 
 import (
-	"github.com/stretchr/testify/assert"
 	"sort"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var hyperComplexBase = `
@@ -166,6 +167,10 @@ func TestHyperComplexBoolReplace(t *testing.T) {
 	assert.Equal(t, 3, len(patch), "they should be equal")
 	sort.Sort(ByPath(patch))
 
+	for _, v := range patch {
+		t.Log(v.Json())
+	}
+
 	change := patch[0]
 	assert.Equal(t, "replace", change.Operation, "they should be equal")
 	assert.Equal(t, "/goods/0/batters/batter/2/type", change.Path, "they should be equal")
@@ -175,7 +180,7 @@ func TestHyperComplexBoolReplace(t *testing.T) {
 	assert.Equal(t, "/goods/2/batters/batter/2", change.Path, "they should be equal")
 	assert.Equal(t, map[string]interface{}{"id": "1003", "type": "Vanilla"}, change.Value, "they should be equal")
 	change = patch[2]
-	assert.Equal(t, change.Operation, "remove", "they should be equal")
-	assert.Equal(t, change.Path, "/goods/2/topping/2", "they should be equal")
+	assert.Equal(t, "remove", change.Operation, "they should be equal")
+	assert.Equal(t, "/goods/2/topping/2", change.Path, "they should be equal")
 	assert.Equal(t, nil, change.Value, "they should be equal")
 }

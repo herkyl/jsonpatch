@@ -1,6 +1,7 @@
 package jsonpatch
 
 import (
+	"encoding/json"
 	"sort"
 	"testing"
 
@@ -66,4 +67,41 @@ func TestArrayRemoveSpaceInbetween(t *testing.T) {
 	assert.Equal(t, "remove", change.Operation, "they should be equal")
 	assert.Equal(t, "/persons/2", change.Path, "they should be equal")
 	assert.Equal(t, nil, change.Value, "they should be equal")
+}
+
+func TestArrayPatchCreate(t *testing.T) {
+	cases := map[string]struct {
+		a    string
+		b    string
+		diff string
+	}{
+		"add element as last to array": {
+			`[1, 2, 3]`,
+			`[1, 2, 3, 4]`,
+			`[{"op":"add","path":"/3","value":4}]`,
+		},
+		"add element as first to array": {
+			`[1, 2, 3]`,
+			`[0, 1, 2, 3]`,
+			`[{"op":"add","path":"/0","value":0}]`,
+		},
+		"remove last element from array": {
+			`[1, 2, 3, 4]`,
+			`[1, 2, 3]`,
+			`[{"op":"remove","path":"/3"}]`,
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Logf(`Running test: "%s"`, name)
+			patch, err := CreatePatch([]byte(tc.a), []byte(tc.b))
+			assert.NoError(t, err)
+
+			patchBytes, err := json.Marshal(patch)
+			assert.NoError(t, err)
+
+			assert.Equal(t, tc.diff, string(patchBytes))
+		})
+	}
 }

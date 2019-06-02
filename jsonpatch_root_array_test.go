@@ -13,36 +13,36 @@ func TestJSONPatchCreate(t *testing.T) {
 		b    string
 		diff string
 	}{
-		"object": {
-			`{"asdf":"qwerty"}`,
-			`{"asdf":"zzz"}`,
-			`[{"op":"replace","path":"/asdf","value":"zzz"}]`,
-		},
-		"object with array": {
-			`{"items":[{"asdf":"qwerty"}]}`,
-			`{"items":[{"asdf":"bla"},{"asdf":"zzz"}]}`,
-			`[{"op":"remove","path":"/items/0"},{"op":"add","path":"/items/0","value":{"asdf":"bla"}},{"op":"add","path":"/items/1","value":{"asdf":"zzz"}}]`,
-		},
+		// "object": {
+		// 	`{"asdf":"qwerty"}`,
+		// 	`{"asdf":"zzz"}`,
+		// 	`[{"op":"replace","path":"/asdf","value":"zzz"}]`,
+		// },
+		// "object with array": {
+		// 	`{"items":[{"asdf":"qwerty"}]}`,
+		// 	`{"items":[{"asdf":"bla"},{"asdf":"zzz"}]}`,
+		// 	`[{"op":"remove","path":"/items/0"},{"op":"add","path":"/items/0","value":{"asdf":"bla"}},{"op":"add","path":"/items/1","value":{"asdf":"zzz"}}]`,
+		// },
 		"array": {
 			`[{"asdf":"qwerty"}]`,
 			`[{"asdf":"bla"},{"asdf":"zzz"}]`,
 			`[{"op":"replace","path":"/0/asdf","value":"bla"},{"op":"add","path":"/1","value":{"asdf":"zzz"}}]`,
 		},
-		"from empty array": {
-			`[]`,
-			`[{"asdf":"bla"},{"asdf":"zzz"}]`,
-			`[{"op":"add","path":"/0","value":{"asdf":"bla"}},{"op":"add","path":"/1","value":{"asdf":"zzz"}}]`,
-		},
-		"to empty array": {
-			`[{"asdf":"bla"},{"asdf":"zzz"}]`,
-			`[]`,
-			`[{"op":"remove","path":"/0"},{"op":"remove","path":"/1"}]`,
-		},
-		"from object to array": {
-			`{"foo":"bar"}`,
-			`[{"foo":"bar"}]`,
-			`[{"op":"replace","path":"","value":[{"foo":"bar"}]}]`,
-		},
+		// "from empty array": {
+		// 	`[]`,
+		// 	`[{"asdf":"bla"},{"asdf":"zzz"}]`,
+		// 	`[{"op":"add","path":"/0","value":{"asdf":"bla"}},{"op":"add","path":"/1","value":{"asdf":"zzz"}}]`,
+		// },
+		// "to empty array": {
+		// 	`[{"asdf":"bla"},{"asdf":"zzz"}]`,
+		// 	`[]`,
+		// 	`[{"op":"remove","path":"/0"},{"op":"remove","path":"/1"}]`,
+		// },
+		// "from object to array": {
+		// 	`{"foo":"bar"}`,
+		// 	`[{"foo":"bar"}]`,
+		// 	`[{"op":"replace","path":"","value":[{"foo":"bar"}]}]`,
+		// },
 	}
 
 	for name, tc := range cases {

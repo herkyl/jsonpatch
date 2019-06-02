@@ -119,7 +119,10 @@ func diff(a, b interface{}, p string, patch []JsonPatchOperation) ([]JsonPatchOp
 			patch = append(patch, NewPatch("replace", p, b))
 		} else if len(at) != len(bt) {
 			// arrays are not the same length
-			patch = append(patch, diffArrays(at, bt, p)...)
+			patch, err = diffArrays(at, bt, p, patch)
+			if err != nil {
+				return nil, err
+			}
 		} else {
 			for i := range bt {
 				patch, err = diff(at[i], bt[i], makePath(p, i), patch)
@@ -174,40 +177,42 @@ func diffObjects(a, b map[string]interface{}, path string, patch []JsonPatchOper
 	return patch, nil
 }
 
-func diffArrays(av, bv []interface{}, p string) []JsonPatchOperation {
-	retval := []JsonPatchOperation{}
-	// Find elements that need to be removed
-	processArray(av, bv, func(i int, value interface{}) {
-		retval = append(retval, NewPatch("remove", makePath(p, i), nil))
-	})
-	// Find elements that need to be added.
-	// NOTE we pass in `bv` then `av` so that processArray can find the missing elements.
-	processArray(bv, av, func(i int, value interface{}) {
-		retval = append(retval, NewPatch("add", makePath(p, i), value))
-	})
-	return retval
-}
-
-// processArray processes `av` and `bv` calling `applyOp` whenever a value is absent.
-// It keeps track of which indexes have already had `applyOp` called for and automatically skips them so you can process duplicate objects correctly.
-func processArray(av, bv []interface{}, applyOp func(i int, value interface{})) {
-	foundIndexes := make(map[int]bool, len(av))
-	reverseFoundIndexes := make(map[int]bool, len(av))
-	for i, v := range av {
-		for i2, v2 := range bv {
-			if _, ok := reverseFoundIndexes[i2]; ok {
-				// We already found this index.
-				continue
-			}
-			if reflect.DeepEqual(v, v2) {
-				// Mark this index as found since it matches exactly.
-				foundIndexes[i] = true
-				reverseFoundIndexes[i2] = true
-				break
-			}
+func diffArrays(a, b []interface{}, p string, patch []JsonPatchOperation) ([]JsonPatchOperation, error) {
+	max := len(a)
+	if len(b) > max {
+		max = len(b)
+	}
+	for i := 0; i < max; i++ {
+		newPath := makePath(p, i)
+		if len(a) < i+1 {
+			patch = append(patch, NewPatch("add", newPath, b[i]))
+			continue
 		}
-		if _, ok := foundIndexes[i]; !ok {
-			applyOp(i, v)
+		if len(b) < i+1 {
+			patch = append(patch, NewPatch("remove", newPath, nil))
+			continue
+		}
+		var err error
+		patch, err = diff(a[i], b[i], newPath, patch)
+		if err != nil {
+			return nil, err
 		}
 	}
+	return patch, nil
+}
+
+func getSmallestPatch(patches ...[]JsonPatchOperation) []JsonPatchOperation {
+	smallestPatch := patches[0]
+	b, _ := json.Marshal(patches[0])
+	smallestSize := len(b)
+	for i := 1; i < len(patches); i++ {
+		p := patches[i]
+		b, _ := json.Marshal(p)
+		size := len(b)
+		if size < smallestSize {
+			smallestPatch = p
+			smallestSize = size
+		}
+	}
+	return smallestPatch
 }
