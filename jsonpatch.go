@@ -10,18 +10,18 @@ import (
 
 var errBadJSONDoc = fmt.Errorf("Invalid JSON Document")
 
-type JsonPatchOperation struct {
+type JSONPatchOperation struct {
 	Operation string      `json:"op"`
 	Path      string      `json:"path"`
 	Value     interface{} `json:"value,omitempty"`
 }
 
-func (j *JsonPatchOperation) Json() string {
+func (j *JSONPatchOperation) JSON() string {
 	b, _ := json.Marshal(j)
 	return string(b)
 }
 
-func (j *JsonPatchOperation) MarshalJSON() ([]byte, error) {
+func (j *JSONPatchOperation) MarshalJSON() ([]byte, error) {
 	var b bytes.Buffer
 	b.WriteString("{")
 	b.WriteString(fmt.Sprintf(`"op":"%s"`, j.Operation))
@@ -39,23 +39,23 @@ func (j *JsonPatchOperation) MarshalJSON() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-type ByPath []JsonPatchOperation
+type ByPath []JSONPatchOperation
 
 func (a ByPath) Len() int           { return len(a) }
 func (a ByPath) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByPath) Less(i, j int) bool { return a[i].Path < a[j].Path }
 
-func NewPatch(operation, path string, value interface{}) JsonPatchOperation {
-	return JsonPatchOperation{Operation: operation, Path: path, Value: value}
+func NewPatch(operation, path string, value interface{}) JSONPatchOperation {
+	return JSONPatchOperation{Operation: operation, Path: path, Value: value}
 }
 
 // CreatePatch creates a patch as specified in http://jsonpatch.com/
 //
 // 'a' is original, 'b' is the modified document. Both are to be given as json encoded content.
-// The function will return an array of JsonPatchOperations
+// The function will return an array of JSONPatchOperations
 //
 // An error will be returned if any of the two documents are invalid.
-func CreatePatch(a, b []byte) ([]JsonPatchOperation, error) {
+func CreatePatch(a, b []byte) ([]JSONPatchOperation, error) {
 	var aI interface{}
 	var bI interface{}
 
@@ -68,7 +68,7 @@ func CreatePatch(a, b []byte) ([]JsonPatchOperation, error) {
 		return nil, errBadJSONDoc
 	}
 
-	return diff(aI, bI, "", []JsonPatchOperation{})
+	return diff(aI, bI, "", []JSONPatchOperation{})
 }
 
 // From http://tools.ietf.org/html/rfc6901#section-4 :
@@ -93,7 +93,7 @@ func makePath(path string, newPart interface{}) string {
 	return path + "/" + key
 }
 
-func diff(a, b interface{}, p string, patch []JsonPatchOperation) ([]JsonPatchOperation, error) {
+func diff(a, b interface{}, p string, patch []JSONPatchOperation) ([]JSONPatchOperation, error) {
 	// If values are not of the same type simply replace
 	if reflect.TypeOf(a) != reflect.TypeOf(b) {
 		patch = append(patch, NewPatch("replace", p, b))
@@ -101,7 +101,7 @@ func diff(a, b interface{}, p string, patch []JsonPatchOperation) ([]JsonPatchOp
 	}
 
 	var err error
-	var patch2 []JsonPatchOperation
+	var patch2 []JSONPatchOperation
 	switch at := a.(type) {
 	case map[string]interface{}:
 		bt := b.(map[string]interface{})
@@ -141,9 +141,9 @@ func diff(a, b interface{}, p string, patch []JsonPatchOperation) ([]JsonPatchOp
 }
 
 // diff returns the (recursive) difference between a and b as an array of JsonPatchOperations.
-func diffObjects(a, b map[string]interface{}, path string) ([]JsonPatchOperation, error) {
-	fullReplace := []JsonPatchOperation{NewPatch("replace", path, b)}
-	patch := []JsonPatchOperation{}
+func diffObjects(a, b map[string]interface{}, path string) ([]JSONPatchOperation, error) {
+	fullReplace := []JSONPatchOperation{NewPatch("replace", path, b)}
+	patch := []JSONPatchOperation{}
 	for key, bv := range b {
 		p := makePath(path, key)
 		av, ok := a[key]
@@ -175,9 +175,9 @@ func diffObjects(a, b map[string]interface{}, path string) ([]JsonPatchOperation
 	return getSmallestPatch(fullReplace, patch), nil
 }
 
-func diffArrays(a, b []interface{}, p string) ([]JsonPatchOperation, error) {
-	fullReplace := []JsonPatchOperation{NewPatch("replace", p, b)}
-	patch := []JsonPatchOperation{}
+func diffArrays(a, b []interface{}, p string) ([]JSONPatchOperation, error) {
+	fullReplace := []JSONPatchOperation{NewPatch("replace", p, b)}
+	patch := []JSONPatchOperation{}
 	max := len(a)
 	if len(b) > max {
 		max = len(b)
@@ -201,7 +201,7 @@ func diffArrays(a, b []interface{}, p string) ([]JsonPatchOperation, error) {
 	return getSmallestPatch(fullReplace, patch), nil
 }
 
-func getSmallestPatch(patches ...[]JsonPatchOperation) []JsonPatchOperation {
+func getSmallestPatch(patches ...[]JSONPatchOperation) []JSONPatchOperation {
 	smallestPatch := patches[0]
 	b, _ := json.Marshal(patches[0])
 	smallestSize := len(b)

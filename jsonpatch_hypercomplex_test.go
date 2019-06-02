@@ -168,7 +168,7 @@ func TestHyperComplexBoolReplace(t *testing.T) {
 	sort.Sort(ByPath(patch))
 
 	for _, v := range patch {
-		t.Log(v.Json())
+		t.Log(v.JSON())
 	}
 
 	change := patch[0]
