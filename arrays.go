@@ -39,10 +39,11 @@ func diffArrays(a, b []interface{}, p string, forceFullPatch bool) ([]JSONPatchO
 	if len(b) > maxLen {
 		maxLen = len(b)
 	}
-	for i := 0; i < maxLen; i++ {
-		newPath := makePath(p, i+addedDelta)
+	for i := 0; i < len(a); i++ {
+		index := i + addedDelta
+		newPath := makePath(p, index)
 		if len(a)+addedDelta <= i {
-			patch = append(patch, NewPatch("add", newPath, b[i]))
+			patch = append(patch, NewPatch("add", newPath, b[index]))
 			addedDelta++
 			continue
 		}
