@@ -175,32 +175,6 @@ func diffObjects(a, b map[string]interface{}, path string) ([]JSONPatchOperation
 	return getSmallestPatch(fullReplace, patch), nil
 }
 
-func diffArrays(a, b []interface{}, p string) ([]JSONPatchOperation, error) {
-	fullReplace := []JSONPatchOperation{NewPatch("replace", p, b)}
-	patch := []JSONPatchOperation{}
-	max := len(a)
-	if len(b) > max {
-		max = len(b)
-	}
-	for i := 0; i < max; i++ {
-		newPath := makePath(p, i)
-		if len(a) < i+1 {
-			patch = append(patch, NewPatch("add", newPath, b[i]))
-			continue
-		}
-		if len(b) < i+1 {
-			patch = append(patch, NewPatch("remove", newPath, nil))
-			continue
-		}
-		var err error
-		patch, err = diff(a[i], b[i], newPath, patch)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return getSmallestPatch(fullReplace, patch), nil
-}
-
 func getSmallestPatch(patches ...[]JSONPatchOperation) []JSONPatchOperation {
 	smallestPatch := patches[0]
 	b, _ := json.Marshal(patches[0])
