@@ -121,7 +121,7 @@ func diff(a, b interface{}, p string, patch []JSONPatchOperation) ([]JSONPatchOp
 			patch = append(patch, NewPatch("replace", p, b))
 		} else {
 			// arrays are not the same length
-			patch2, err = diffArrays(at, bt, p)
+			patch2, err = diffArrays(at, bt, p, false)
 			if err != nil {
 				return nil, err
 			}

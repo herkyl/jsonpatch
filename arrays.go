@@ -10,15 +10,14 @@ type arrayEl struct {
 	isBase bool
 }
 
-func diffArrays(a, b []interface{}, p string) ([]JSONPatchOperation, error) {
+func diffArrays(a, b []interface{}, p string, forceFullPatch bool) ([]JSONPatchOperation, error) {
 	fullReplace := []JSONPatchOperation{NewPatch("replace", p, b)}
 	patch := []JSONPatchOperation{}
 
 	tmp := make([]arrayEl, len(a))
-
 	for i, ae := range a {
 		newEl := arrayEl{val: ae}
-		for j := i; j < len(a); j++ {
+		for j := i; j < len(b); j++ {
 			if len(b) <= j { //b is out of bounds
 				break
 			}
@@ -34,23 +33,38 @@ func diffArrays(a, b []interface{}, p string) ([]JSONPatchOperation, error) {
 	fmt.Println("a>>>", a)
 	fmt.Println("TMP>>>", tmp)
 
-	for i := 0; i < len(a); i++ {
+	bPos := 0
+	addedDelta := 0
+	maxLen := len(a)
+	if len(b) > maxLen {
+		maxLen = len(b)
+	}
+	for i := 0; i < maxLen; i++ {
+		newPath := makePath(p, i+addedDelta)
+		if len(a)+addedDelta <= i {
+			patch = append(patch, NewPatch("add", newPath, b[i]))
+			addedDelta++
+			continue
+		}
 		te := tmp[i]
-		newPath := makePath(p, i)
-		for j := i; j < len(a); j++ { //FIXME: what if b is longer than a?
-			if len(b) <= j { //b is out of bounds
-				break
-			}
+		for j := bPos; j < maxLen; j++ {
 			be := b[j]
 			fmt.Printf("Comparing i=%d j=%d ae=%v be=%v\n", i, j, te.val, be)
 			if reflect.DeepEqual(te.val, be) {
 				// element is already in b, move on
+				bPos++
 				break
 			} else {
 				if te.isBase {
+					fmt.Println("add", newPath, be)
 					patch = append(patch, NewPatch("add", newPath, be))
+					addedDelta++
+					bPos++
 				} else {
+					fmt.Println("remove", newPath, be)
 					patch = append(patch, NewPatch("remove", newPath, nil))
+					addedDelta--
+					break
 				}
 			}
 		}
@@ -58,5 +72,8 @@ func diffArrays(a, b []interface{}, p string) ([]JSONPatchOperation, error) {
 
 	fmt.Println("patch>>>", patch)
 
+	if forceFullPatch {
+		return patch, nil
+	}
 	return getSmallestPatch(fullReplace, patch), nil
 }
