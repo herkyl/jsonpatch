@@ -47,7 +47,8 @@ func diffArrays(a, b []interface{}, p string, forceFullPatch bool) ([]JSONPatchO
 		}
 		if aIndex >= len(a) { // a is out of bounds, all new items in b must be adds
 			patch = append(patch, NewPatch("add", newPath, b[tmpIndex]))
-			// addedDelta++
+			addedDelta++
+			aIndex--
 			continue
 		}
 		if bIndex >= len(b) { // b is out of bounds, all new items in a must be removed
@@ -69,7 +70,9 @@ func diffArrays(a, b []interface{}, p string, forceFullPatch bool) ([]JSONPatchO
 					fmt.Println("add", newPath, be)
 					patch = append(patch, NewPatch("add", newPath, be))
 					addedDelta++
+					aIndex--
 					bIndex++
+					break
 				} else {
 					fmt.Println("remove", newPath, be)
 					patch = append(patch, NewPatch("remove", newPath, nil))

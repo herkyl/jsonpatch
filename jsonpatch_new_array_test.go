@@ -157,6 +157,38 @@ func TestAddingElementsAround(t *testing.T) {
 	assert.Equal(t, "y", change.Value)
 }
 
+func TestAddingMultipleElementsAround(t *testing.T) {
+	patch, e := diffArrays(
+		[]interface{}{"a"},
+		[]interface{}{"1", "2", "a", "3", "4"},
+		"",
+		true,
+	)
+	assert.NoError(t, e)
+	t.Log("Patch:", patch)
+	assert.Equal(t, 4, len(patch))
+
+	change := patch[0]
+	assert.Equal(t, "add", change.Operation)
+	assert.Equal(t, "/0", change.Path)
+	assert.Equal(t, "1", change.Value)
+
+	change = patch[1]
+	assert.Equal(t, "add", change.Operation)
+	assert.Equal(t, "/1", change.Path)
+	assert.Equal(t, "2", change.Value)
+
+	change = patch[2]
+	assert.Equal(t, "add", change.Operation)
+	assert.Equal(t, "/3", change.Path)
+	assert.Equal(t, "3", change.Value)
+
+	change = patch[3]
+	assert.Equal(t, "add", change.Operation)
+	assert.Equal(t, "/4", change.Path)
+	assert.Equal(t, "4", change.Value)
+}
+
 func TestAddingElementsToEmptyArray(t *testing.T) {
 	patch, e := diffArrays(
 		[]interface{}{},
