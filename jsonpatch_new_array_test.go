@@ -157,6 +157,28 @@ func TestAddingElementsAround(t *testing.T) {
 	assert.Equal(t, "y", change.Value)
 }
 
+func TestRemovingElementsAround(t *testing.T) {
+	patch, e := diffArrays(
+		[]interface{}{"x", "a", "b", "y"},
+		[]interface{}{"a", "b"},
+		"",
+		true,
+	)
+	assert.NoError(t, e)
+	t.Log("Patch:", patch)
+	assert.Equal(t, 2, len(patch))
+
+	change := patch[0]
+	assert.Equal(t, "remove", change.Operation)
+	assert.Equal(t, "/0", change.Path)
+	assert.Equal(t, nil, change.Value)
+
+	change = patch[1]
+	assert.Equal(t, "remove", change.Operation)
+	assert.Equal(t, "/2", change.Path)
+	assert.Equal(t, nil, change.Value)
+}
+
 func TestAddingMultipleElementsAround(t *testing.T) {
 	patch, e := diffArrays(
 		[]interface{}{"a"},
@@ -187,6 +209,38 @@ func TestAddingMultipleElementsAround(t *testing.T) {
 	assert.Equal(t, "add", change.Operation)
 	assert.Equal(t, "/4", change.Path)
 	assert.Equal(t, "4", change.Value)
+}
+
+func TestRemovingMultipleElementsAround(t *testing.T) {
+	patch, e := diffArrays(
+		[]interface{}{"1", "2", "a", "3", "4"},
+		[]interface{}{"a"},
+		"",
+		true,
+	)
+	assert.NoError(t, e)
+	t.Log("Patch:", patch)
+	assert.Equal(t, 4, len(patch))
+
+	change := patch[0]
+	assert.Equal(t, "remove", change.Operation)
+	assert.Equal(t, "/0", change.Path)
+	assert.Equal(t, nil, change.Value)
+
+	change = patch[1]
+	assert.Equal(t, "remove", change.Operation)
+	assert.Equal(t, "/0", change.Path)
+	assert.Equal(t, nil, change.Value)
+
+	change = patch[2]
+	assert.Equal(t, "remove", change.Operation)
+	assert.Equal(t, "/1", change.Path)
+	assert.Equal(t, nil, change.Value)
+
+	change = patch[3]
+	assert.Equal(t, "remove", change.Operation)
+	assert.Equal(t, "/1", change.Path)
+	assert.Equal(t, nil, change.Value)
 }
 
 func TestAddingElementsToEmptyArray(t *testing.T) {
@@ -231,4 +285,26 @@ func TestRemovingAllElements(t *testing.T) {
 	assert.Equal(t, "remove", change.Operation)
 	assert.Equal(t, "/0", change.Path)
 	assert.Equal(t, nil, change.Value)
+}
+
+func TestReplace(t *testing.T) {
+	patch, e := diffArrays(
+		[]interface{}{"a"},
+		[]interface{}{"b"},
+		"",
+		true,
+	)
+	assert.NoError(t, e)
+	t.Log("Patch:", patch)
+	assert.Equal(t, 2, len(patch))
+
+	change := patch[0]
+	assert.Equal(t, "remove", change.Operation)
+	assert.Equal(t, "/0", change.Path)
+	assert.Equal(t, nil, change.Value)
+
+	change = patch[1]
+	assert.Equal(t, "add", change.Operation)
+	assert.Equal(t, "/0", change.Path)
+	assert.Equal(t, "b", change.Value)
 }

@@ -40,10 +40,10 @@ func diffArrays(a, b []interface{}, p string, forceFullPatch bool) ([]JSONPatchO
 	if len(b) > maxLen {
 		maxLen = len(b)
 	}
-	for aIndex < maxLen {
+	for aIndex+addedDelta < maxLen {
 		tmpIndex := aIndex + addedDelta
 		newPath := makePath(p, tmpIndex)
-		if tmpIndex >= maxLen {
+		if aIndex >= len(a) && bIndex >= len(b) {
 			break
 		}
 		if aIndex >= len(a) { // a is out of bounds, all new items in b must be adds
@@ -57,7 +57,7 @@ func diffArrays(a, b []interface{}, p string, forceFullPatch bool) ([]JSONPatchO
 			aIndex++
 			continue
 		}
-		// can compare arrays, so let's compare them
+		// can compare elements, so let's compare them
 		te := tmp[aIndex]
 		for j := bIndex; j < maxLen; j++ {
 			be := b[j]
