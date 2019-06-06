@@ -33,13 +33,14 @@ func diffArrays(a, b []interface{}, p string, forceFullPatch bool) ([]JSONPatchO
 	fmt.Println("a>>>", a)
 	fmt.Println("TMP>>>", tmp)
 
+	aIndex := 0
 	bIndex := 0
 	addedDelta := 0
 	maxLen := len(a)
 	if len(b) > maxLen {
 		maxLen = len(b)
 	}
-	for aIndex := 0; aIndex < maxLen; aIndex++ {
+	for aIndex < maxLen {
 		tmpIndex := aIndex + addedDelta
 		newPath := makePath(p, tmpIndex)
 		if tmpIndex >= maxLen {
@@ -48,12 +49,12 @@ func diffArrays(a, b []interface{}, p string, forceFullPatch bool) ([]JSONPatchO
 		if aIndex >= len(a) { // a is out of bounds, all new items in b must be adds
 			patch = append(patch, NewPatch("add", newPath, b[tmpIndex]))
 			addedDelta++
-			aIndex--
 			continue
 		}
 		if bIndex >= len(b) { // b is out of bounds, all new items in a must be removed
 			patch = append(patch, NewPatch("remove", newPath, nil))
 			addedDelta--
+			aIndex++
 			continue
 		}
 		// can compare arrays, so let's compare them
@@ -64,19 +65,20 @@ func diffArrays(a, b []interface{}, p string, forceFullPatch bool) ([]JSONPatchO
 			if reflect.DeepEqual(te.val, be) {
 				// element is already in b, move on
 				bIndex++
+				aIndex++
 				break
 			} else {
 				if te.isFixed {
 					fmt.Println("add", newPath, be)
 					patch = append(patch, NewPatch("add", newPath, be))
 					addedDelta++
-					aIndex--
 					bIndex++
 					break
 				} else {
 					fmt.Println("remove", newPath, be)
 					patch = append(patch, NewPatch("remove", newPath, nil))
 					addedDelta--
+					aIndex++
 					break
 				}
 			}
