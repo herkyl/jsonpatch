@@ -5,25 +5,25 @@ import (
 	"reflect"
 )
 
-type arrayEl struct {
-	val    interface{}
-	isBase bool
+type tmpEl struct {
+	val     interface{}
+	isFixed bool
 }
 
 func diffArrays(a, b []interface{}, p string, forceFullPatch bool) ([]JSONPatchOperation, error) {
 	fullReplace := []JSONPatchOperation{NewPatch("replace", p, b)}
 	patch := []JSONPatchOperation{}
 
-	tmp := make([]arrayEl, len(a))
+	tmp := make([]tmpEl, len(a))
 	for i, ae := range a {
-		newEl := arrayEl{val: ae}
+		newEl := tmpEl{val: ae}
 		for j := i; j < len(b); j++ {
 			if len(b) <= j { //b is out of bounds
 				break
 			}
 			be := b[j]
 			if reflect.DeepEqual(ae, be) {
-				newEl.isBase = true
+				newEl.isFixed = true // this element should remain in place
 			}
 		}
 		tmp[i] = newEl
@@ -33,37 +33,43 @@ func diffArrays(a, b []interface{}, p string, forceFullPatch bool) ([]JSONPatchO
 	fmt.Println("a>>>", a)
 	fmt.Println("TMP>>>", tmp)
 
-	bPos := 0
+	bIndex := 0
 	addedDelta := 0
 	maxLen := len(a)
 	if len(b) > maxLen {
 		maxLen = len(b)
 	}
-	for i := 0; i < maxLen; i++ {
-		index := i + addedDelta
-		if index >= maxLen {
+	for aIndex := 0; aIndex < maxLen; aIndex++ {
+		tmpIndex := aIndex + addedDelta
+		newPath := makePath(p, tmpIndex)
+		if tmpIndex >= maxLen {
 			break
 		}
-		newPath := makePath(p, index)
-		if len(a) <= i {
-			patch = append(patch, NewPatch("add", newPath, b[index]))
-			addedDelta++
+		if aIndex >= len(a) { // a is out of bounds, all new items in b must be adds
+			patch = append(patch, NewPatch("add", newPath, b[tmpIndex]))
+			// addedDelta++
 			continue
 		}
-		te := tmp[i]
-		for j := bPos; j < maxLen; j++ {
+		if bIndex >= len(b) { // b is out of bounds, all new items in a must be removed
+			patch = append(patch, NewPatch("remove", newPath, nil))
+			addedDelta--
+			continue
+		}
+		// can compare arrays, so let's compare them
+		te := tmp[aIndex]
+		for j := bIndex; j < maxLen; j++ {
 			be := b[j]
-			fmt.Printf("Comparing i=%d j=%d ae=%v be=%v\n", i, j, te.val, be)
+			fmt.Printf("Comparing i=%d j=%d ae=%v be=%v\n", aIndex, j, te.val, be)
 			if reflect.DeepEqual(te.val, be) {
 				// element is already in b, move on
-				bPos++
+				bIndex++
 				break
 			} else {
-				if te.isBase {
+				if te.isFixed {
 					fmt.Println("add", newPath, be)
 					patch = append(patch, NewPatch("add", newPath, be))
 					addedDelta++
-					bPos++
+					bIndex++
 				} else {
 					fmt.Println("remove", newPath, be)
 					patch = append(patch, NewPatch("remove", newPath, nil))

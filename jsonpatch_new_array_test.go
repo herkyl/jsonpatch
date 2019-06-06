@@ -134,3 +134,69 @@ func TestRemovingFirstElement(t *testing.T) {
 	assert.Equal(t, "/0", change.Path)
 	assert.Equal(t, nil, change.Value)
 }
+
+func TestAddingElementsAround(t *testing.T) {
+	patch, e := diffArrays(
+		[]interface{}{"a", "b"},
+		[]interface{}{"x", "a", "b", "y"},
+		"",
+		true,
+	)
+	assert.NoError(t, e)
+	t.Log("Patch:", patch)
+	assert.Equal(t, 2, len(patch))
+
+	change := patch[0]
+	assert.Equal(t, "add", change.Operation)
+	assert.Equal(t, "/0", change.Path)
+	assert.Equal(t, "x", change.Value)
+
+	change = patch[1]
+	assert.Equal(t, "add", change.Operation)
+	assert.Equal(t, "/3", change.Path)
+	assert.Equal(t, "y", change.Value)
+}
+
+func TestAddingElementsToEmptyArray(t *testing.T) {
+	patch, e := diffArrays(
+		[]interface{}{},
+		[]interface{}{"a", "b"},
+		"",
+		true,
+	)
+	assert.NoError(t, e)
+	t.Log("Patch:", patch)
+	assert.Equal(t, 2, len(patch))
+
+	change := patch[0]
+	assert.Equal(t, "add", change.Operation)
+	assert.Equal(t, "/0", change.Path)
+	assert.Equal(t, "a", change.Value)
+
+	change = patch[1]
+	assert.Equal(t, "add", change.Operation)
+	assert.Equal(t, "/1", change.Path)
+	assert.Equal(t, "b", change.Value)
+}
+
+func TestRemovingAllElements(t *testing.T) {
+	patch, e := diffArrays(
+		[]interface{}{"a", "b"},
+		[]interface{}{},
+		"",
+		true,
+	)
+	assert.NoError(t, e)
+	t.Log("Patch:", patch)
+	assert.Equal(t, 2, len(patch))
+
+	change := patch[0]
+	assert.Equal(t, "remove", change.Operation)
+	assert.Equal(t, "/0", change.Path)
+	assert.Equal(t, nil, change.Value)
+
+	change = patch[1]
+	assert.Equal(t, "remove", change.Operation)
+	assert.Equal(t, "/0", change.Path)
+	assert.Equal(t, nil, change.Value)
+}
